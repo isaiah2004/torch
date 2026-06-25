@@ -305,6 +305,11 @@ export interface ChunkMeta {
   pageStart?: number
   pageEnd?: number
   headingPath?: string[]
+  /** Scripture chunks only: structured verse range for precise citation. */
+  book?: string
+  chapterNumber?: number
+  verseStart?: number
+  verseEnd?: number
 }
 
 export interface Citation {

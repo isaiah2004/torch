@@ -18,7 +18,8 @@
     "db:push": "drizzle-kit push",
     "seed:sources": "tsx scripts/seed-sources.ts",
     "load:bible": "tsx scripts/load-bible.ts",
-    "bibles:public": "tsx scripts/load-public-bibles.ts"
+    "bibles:public": "tsx scripts/load-public-bibles.ts",
+    "embed:bible": "tsx scripts/embed-bible.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.5.9",
