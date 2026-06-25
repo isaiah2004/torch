@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Geist, Geist_Mono, Merriweather } from "next/font/google"
 import { ClerkProvider } from "@clerk/nextjs"
+import { shadcn } from "@clerk/ui/themes"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -30,16 +31,16 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <ClerkProvider>
-      <html
-        lang="en"
-        suppressHydrationWarning
-        className={cn("antialiased", fontSans.variable, fontMono.variable, "font-serif", merriweather.variable)}
-      >
-        <body>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={cn("antialiased", fontSans.variable, fontMono.variable, "font-serif", merriweather.variable)}
+    >
+      <body>
+        <ClerkProvider appearance={{ theme: shadcn }}>
           <ThemeProvider>{children}</ThemeProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   )
 }
