@@ -50,5 +50,6 @@ COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
 
 USER nextjs
 EXPOSE 3000
-ENTRYPOINT ["./docker-entrypoint.sh"]
+# Invoke via `sh` so a missing exec bit (e.g. Windows checkout) doesn't break boot.
+ENTRYPOINT ["sh", "./docker-entrypoint.sh"]
 CMD ["node", "server.js"]
