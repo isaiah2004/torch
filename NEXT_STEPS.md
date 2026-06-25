@@ -128,10 +128,15 @@ answer ships unless every citation/quote/page is verified.
 - [ ] Set `ai_requests.verified` accordingly
 
 ### 3.4 Scripture — load your copy into Postgres
-- [ ] New table `bible_verses` (translation, book, chapter, verse, text) + migration
-- [ ] `scripts/load-bible.ts` importer for your file
-- [ ] Back `scripture_lookup` with it; render in "Biblical References"
-- [ ] **Needs from you:** the Scripture file + format + translation/license
+> **Infra ready (2026-06-26):** data layer built ahead of the graph. Source =
+> `scrollmapper/bible_databases`. Public-domain to load: KJV, ASV, WEB, YLT,
+> Geneva 1599. NIV/NKJV are **quote-only** via api.bible (copies coming).
+- [x] New tables `bible_verses` + `bible_translations` (`canRedistribute`/license flag) + migration `0001_*`
+- [x] `scripts/load-bible.ts` importer (`pnpm load:bible`; tolerates scrollmapper array/nested JSON shapes) — `normalizeVerseRecords` unit-tested
+- [x] Reference parser + canonical 66-book resolver (`lib/scripture/`, unit-tested) and DB-backed `lookupPassage`
+- [x] api.bible client for quote-only licensed translations (`API_BIBLE_KEY`, `lib/scripture/api-bible.ts`)
+- [ ] Back the `scripture_lookup` **tool** with `lookupPassage` (Phase 3.1 graph) and render in "Biblical References"
+- [ ] Load the actual translation files once provided (public-domain via `load:bible`; NIV/NKJV via api.bible)
 
 **✅ Phase 3 acceptance:** answers flow through the graph; the verifier provably
 rejects fabricated citations (regression suite green); Scripture references

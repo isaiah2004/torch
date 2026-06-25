@@ -25,6 +25,8 @@ const serverSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   // Hosted reranker (Cohere). When unset, retrieval falls back to vector-score order.
   COHERE_API_KEY: z.string().optional(),
+  // api.bible — for quote-only licensed translations (NIV/NKJV). See lib/scripture.
+  API_BIBLE_KEY: z.string().optional(),
 
   // Ops
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
