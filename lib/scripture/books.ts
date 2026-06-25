@@ -53,7 +53,7 @@ export const CANON: BookInfo[] = [
   { number: 41, name: "Mark", aliases: ["mrk", "mk", "mr"] },
   { number: 42, name: "Luke", aliases: ["luk", "lk"] },
   { number: 43, name: "John", aliases: ["jhn", "jn"] },
-  { number: 44, name: "Acts", aliases: ["act", "ac"] },
+  { number: 44, name: "Acts", aliases: ["act", "ac", "acts of the apostles"] },
   { number: 45, name: "Romans", aliases: ["rom", "rm"] },
   { number: 46, name: "1 Corinthians", aliases: ["1 cor", "1cor", "1 co", "i corinthians"] },
   { number: 47, name: "2 Corinthians", aliases: ["2 cor", "2cor", "2 co", "ii corinthians"] },
@@ -75,7 +75,22 @@ export const CANON: BookInfo[] = [
   { number: 63, name: "2 John", aliases: ["2 jn", "2jn", "2 jhn", "ii john"] },
   { number: 64, name: "3 John", aliases: ["3 jn", "3jn", "3 jhn", "iii john"] },
   { number: 65, name: "Jude", aliases: ["jud", "jd"] },
-  { number: 66, name: "Revelation", aliases: ["rev", "rv", "apocalypse"] },
+  { number: 66, name: "Revelation", aliases: ["rev", "rv", "apocalypse", "revelation of john", "the revelation", "revelation to john"] },
+]
+
+/**
+ * OSIS book codes indexed by canonical book number (1..66); index 0 is unused.
+ * Used to build api.bible passage ids (e.g. "JHN.3.16", "ROM.8.28-ROM.8.30").
+ */
+export const OSIS_BY_NUMBER: string[] = [
+  "",
+  "GEN", "EXO", "LEV", "NUM", "DEU", "JOS", "JDG", "RUT", "1SA", "2SA",
+  "1KI", "2KI", "1CH", "2CH", "EZR", "NEH", "EST", "JOB", "PSA", "PRO",
+  "ECC", "SNG", "ISA", "JER", "LAM", "EZK", "DAN", "HOS", "JOL", "AMO",
+  "OBA", "JON", "MIC", "NAM", "HAB", "ZEP", "HAG", "ZEC", "MAL", "MAT",
+  "MRK", "LUK", "JHN", "ACT", "ROM", "1CO", "2CO", "GAL", "EPH", "PHP",
+  "COL", "1TH", "2TH", "1TI", "2TI", "TIT", "PHM", "HEB", "JAS", "1PE",
+  "2PE", "1JN", "2JN", "3JN", "JUD", "REV",
 ]
 
 /** Normalize for matching: lowercase, strip periods, collapse whitespace. */

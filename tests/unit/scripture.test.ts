@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import { resolveBook } from "@/lib/scripture/books"
 import { formatReference, parseReference } from "@/lib/scripture/reference"
 import { normalizeVerseRecords } from "@/lib/scripture/import"
+import { toPassageId } from "@/lib/scripture/api-bible"
 
 describe("resolveBook", () => {
   it("resolves full names, abbreviations, and numbered books", () => {
@@ -91,9 +92,49 @@ describe("normalizeVerseRecords", () => {
     expect(rows[0]).toMatchObject({ book: "John", bookNumber: 43 })
   })
 
-  it("throws on an unknown book", () => {
+  it("normalizes the scrollmapper { translation, books:[…] } shape, incl. variant names", () => {
+    const rows = normalizeVerseRecords(
+      {
+        translation: "KJV",
+        books: [
+          { name: "I Samuel", chapters: [{ chapter: 1, verses: [{ verse: 1, text: "a" }] }] },
+          { name: "Revelation of John", chapters: [{ chapter: 22, verses: [{ verse: 21, text: "amen" }] }] },
+        ],
+      },
+      "KJV",
+    )
+    expect(rows).toEqual([
+      { translation: "KJV", book: "1 Samuel", bookNumber: 9, chapter: 1, verse: 1, text: "a" },
+      { translation: "KJV", book: "Revelation", bookNumber: 66, chapter: 22, verse: 21, text: "amen" },
+    ])
+  })
+
+  it("throws on an unknown book by default", () => {
     expect(() => normalizeVerseRecords([{ book: "Hezekiah", chapter: 1, verse: 1, text: "x" }], "KJV")).toThrow(
       /Unrecognized Bible book/,
     )
+  })
+
+  it("skips unknown books (e.g. apocrypha) when asked", () => {
+    const rows = normalizeVerseRecords(
+      [
+        { book: "Tobit", chapter: 1, verse: 1, text: "skip" },
+        { book: "John", chapter: 1, verse: 1, text: "keep" },
+      ],
+      "GEN",
+      { skipUnknownBooks: true },
+    )
+    expect(rows).toEqual([
+      { translation: "GEN", book: "John", bookNumber: 43, chapter: 1, verse: 1, text: "keep" },
+    ])
+  })
+})
+
+describe("toPassageId (api.bible)", () => {
+  it("builds single-verse, range, and whole-chapter ids with OSIS codes", () => {
+    expect(toPassageId(parseReference("John 3:16")!)).toBe("JHN.3.16")
+    expect(toPassageId(parseReference("Romans 8:28-30")!)).toBe("ROM.8.28-ROM.8.30")
+    expect(toPassageId(parseReference("1 Corinthians 13:4-7")!)).toBe("1CO.13.4-1CO.13.7")
+    expect(toPassageId(parseReference("Psalm 23")!)).toBe("PSA.23")
   })
 })

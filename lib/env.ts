@@ -27,6 +27,8 @@ const serverSchema = z.object({
   COHERE_API_KEY: z.string().optional(),
   // api.bible — for quote-only licensed translations (NIV/NKJV). See lib/scripture.
   API_BIBLE_KEY: z.string().optional(),
+  // JSON map of translation code → api.bible Bible id, e.g. {"NIV":"<id>"}.
+  API_BIBLE_IDS: z.string().optional(),
 
   // Ops
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),

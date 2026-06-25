@@ -36,10 +36,13 @@ end-to-end acceptance + integration tests (Postgres/pgvector + embedding key), a
 the admin/library UI hookups (Phase 4). See `NEXT_STEPS.md` for the ticked backlog.
 
 **Scripture + reranker decisions (from product):** Bible source =
-`scrollmapper/bible_databases` (Phase 3.4). Translations: ship public-domain
-**KJV, ASV, WEB, YLT, Geneva 1599**; **NIV & NKJV are copyrighted and NOT in that
-repo** — they need a licensed Bible API later. Reranker = Cohere `rerank-v3.5`
-(set `COHERE_API_KEY`; `AI_RERANK_MODEL` defaults to it).
+`scrollmapper/bible_databases` (Phase 3.4). v1 ships the freely-redistributable
+public-domain set **KJV, ASV, YLT, BSB, Geneva 1599** (WEB isn't in the repo; BSB
+is the modern public-domain pick) — load with `pnpm bibles:public`. **NIV & NKJV
+are copyrighted, quote-only via api.bible** — set `API_BIBLE_KEY` + `API_BIBLE_IDS`
+(`{"NIV":"<bibleId>"}`); `lib/scripture/quotePassage()` is wired and returns null
+when a code isn't configured. Reranker = Cohere `rerank-v3.5` (set `COHERE_API_KEY`;
+`AI_RERANK_MODEL` defaults to it). Copy `.env.example` → `.env.local` to start.
 
 ---
 

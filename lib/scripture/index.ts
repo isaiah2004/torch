@@ -15,5 +15,8 @@ export { normalizeVerseRecords, type VerseRow } from "./import"
 export {
   fetchApiBiblePassage,
   isApiBibleConfigured,
+  quotePassage,
+  toPassageId,
+  getApiBibleId,
   type ApiBiblePassage,
 } from "./api-bible"
