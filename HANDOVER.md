@@ -4,6 +4,7 @@ This branch hands off Torch after **Phase 1 (Foundation)** so you can continue
 locally. It contains everything on the feature branch plus this document.
 
 - **Architecture / source of truth:** [`ARCHITECTURE.md`](./ARCHITECTURE.md)
+- **Full task backlog (every next step, tickable):** [`NEXT_STEPS.md`](./NEXT_STEPS.md)
 - **Phase 1 PR:** https://github.com/isaiah2004/torch/pull/1
 - **Feature branch:** `claude/torch-theological-rag-81wp27`
 - **This handover branch:** `claude/torch-handover`
