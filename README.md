@@ -6,6 +6,12 @@ This is a Next.js template with shadcn/ui.
 
 To add components to your app, run the following command:
 
+the init command for theme was 
+```bash
+pnpm dlx shadcn@latest init --preset b4iTlA0AM --template next --pointer
+```
+
+
 ```bash
 npx shadcn@latest add button
 ```
