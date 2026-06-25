@@ -9,6 +9,7 @@ import OpenAI from "openai"
 
 import { serverEnv } from "@/lib/env"
 import { CohereReranker } from "./cohere-rerank"
+import { LlmReranker } from "./llm-rerank"
 import {
   OpenAICompatibleChatModel,
   OpenAICompatibleEmbeddingModel,
@@ -94,13 +95,30 @@ export function getEmbeddingModel(model?: string): EmbeddingModel {
 }
 
 /**
- * The active hosted reranker, or `undefined` when none is configured (retrieval
- * then falls back to vector-similarity order). Currently Cohere; swapping is a
- * matter of adding another adapter here — no call-site changes.
+ * The active reranker, or `undefined` when none is configured (retrieval then
+ * falls back to vector-similarity order). Selection follows AI_RERANK_STRATEGY:
+ *   cohere → Cohere rerank API (needs COHERE_API_KEY)
+ *   llm    → score with a chat model (works through OpenRouter; no extra key)
+ *   none   → no reranker (vector-score order)
+ *   auto   → Cohere if COHERE_API_KEY, else LLM rerank
  */
-export function getReranker(model?: string): Reranker | undefined {
-  if (!serverEnv.COHERE_API_KEY) return undefined
-  return new CohereReranker(serverEnv.COHERE_API_KEY, model ?? serverEnv.AI_RERANK_MODEL)
+export function getReranker(): Reranker | undefined {
+  const strategy = serverEnv.AI_RERANK_STRATEGY
+  const hasCohere = Boolean(serverEnv.COHERE_API_KEY)
+
+  const useCohere = strategy === "cohere" || (strategy === "auto" && hasCohere)
+  const useLlm = strategy === "llm" || (strategy === "auto" && !hasCohere)
+
+  if (useCohere) {
+    if (!serverEnv.COHERE_API_KEY) {
+      throw new Error("AI_RERANK_STRATEGY=cohere but COHERE_API_KEY is not set.")
+    }
+    return new CohereReranker(serverEnv.COHERE_API_KEY, serverEnv.AI_RERANK_MODEL)
+  }
+  if (useLlm) {
+    return new LlmReranker(getProvider().chat(serverEnv.AI_RERANK_LLM_MODEL))
+  }
+  return undefined
 }
 
 export type { AIProvider, ChatModel, EmbeddingModel, Reranker } from "./types"

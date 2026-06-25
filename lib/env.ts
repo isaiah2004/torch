@@ -20,7 +20,11 @@ const serverSchema = z.object({
   AI_CHAT_MODEL: z.string().default("openai/gpt-4o-mini"),
   AI_EMBEDDING_MODEL: z.string().default("text-embedding-3-small"),
   AI_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(1536),
-  AI_RERANK_MODEL: z.string().default("rerank-v3.5"),
+  // Reranker selection. "auto" = Cohere if COHERE_API_KEY is set, else LLM rerank
+  // through the chat provider (works on OpenRouter), else none (vector-score order).
+  AI_RERANK_STRATEGY: z.enum(["auto", "cohere", "llm", "none"]).default("auto"),
+  AI_RERANK_MODEL: z.string().default("rerank-v3.5"), // Cohere rerank model id
+  AI_RERANK_LLM_MODEL: z.string().optional(), // chat model for LLM rerank (defaults to AI_CHAT_MODEL)
   OPENROUTER_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
   // Hosted reranker (Cohere). When unset, retrieval falls back to vector-score order.

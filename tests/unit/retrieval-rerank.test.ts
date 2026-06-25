@@ -47,6 +47,18 @@ describe("rerankChunks", () => {
     expect(r.selected[0].score).toBeCloseTo(0.99)
   })
 
+  it("falls back to vector order when the reranker throws", async () => {
+    const flaky: Reranker = {
+      async rerank() {
+        throw new Error("reranker down")
+      },
+    }
+    const cands = [chunk("a", 0.3), chunk("b", 0.9)]
+    const r = await rerankChunks("q", cands, { reranker: flaky })
+    expect(r.reranked).toBe(false)
+    expect(r.selected.map((c) => c.chunkId)).toEqual(["b", "a"])
+  })
+
   it("drops evidence below minScore", async () => {
     const reranker: Reranker = {
       async rerank(_q, docs) {
