@@ -242,6 +242,57 @@ export const logs = pgTable(
   ],
 )
 
+// ── Scripture (backs the scripture_lookup tool) ──────────────────────────────
+// Translation-agnostic. Public-domain translations (KJV/ASV/WEB/YLT/Geneva) are
+// redistributable; copyrighted ones (NIV/NKJV) are quote-only — `canRedistribute`
+// records that distinction so the app never serves text it isn't licensed to.
+export const bibleTranslations = pgTable("bible_translations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  /** Short code, e.g. KJV, ASV, WEB, YLT, GEN, NIV, NKJV. */
+  code: varchar("code", { length: 16 }).notNull(),
+  name: text("name").notNull(),
+  language: varchar("language", { length: 8 }).notNull().default("en"),
+  license: text("license"),
+  copyright: text("copyright"),
+  /** Source of the text, e.g. "scrollmapper/bible_databases" or "api.bible". */
+  provider: varchar("provider", { length: 64 }),
+  /** False for copyrighted translations we may quote but not serve wholesale. */
+  canRedistribute: boolean("can_redistribute").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+}, (t) => [uniqueIndex("bible_translations_code_idx").on(t.code)])
+
+export const bibleVerses = pgTable(
+  "bible_verses",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    /** Translation code (FK by value to bible_translations.code). */
+    translation: varchar("translation", { length: 16 }).notNull(),
+    /** Canonical book name, e.g. "Genesis", "1 Corinthians". */
+    book: varchar("book", { length: 32 }).notNull(),
+    /** Canonical 1..66 ordering for range queries / sorting. */
+    bookNumber: integer("book_number").notNull(),
+    chapter: integer("chapter").notNull(),
+    verse: integer("verse").notNull(),
+    text: text("text").notNull(),
+  },
+  (t) => [
+    uniqueIndex("bible_verses_ref_idx").on(
+      t.translation,
+      t.book,
+      t.chapter,
+      t.verse,
+    ),
+    index("bible_verses_order_idx").on(
+      t.translation,
+      t.bookNumber,
+      t.chapter,
+      t.verse,
+    ),
+  ],
+)
+
 // ── JSONB payload types ──────────────────────────────────────────────────────
 export interface UserPreferences {
   preferredTraditions?: string[]

@@ -48,16 +48,25 @@ export async function rerankChunks(
   let reranked = false
 
   if (reranker) {
-    const scored = await reranker.rerank(
-      query,
-      candidates.map((c) => c.content),
-      candidates.length,
-    )
-    // Replace similarity with rerank relevance; keep reranker's ordering.
-    ordered = scored
-      .filter((s) => s.index >= 0 && s.index < candidates.length)
-      .map((s) => ({ ...candidates[s.index], score: s.score }))
-    reranked = true
+    try {
+      const scored = await reranker.rerank(
+        query,
+        candidates.map((c) => c.content),
+        candidates.length,
+      )
+      // Replace similarity with rerank relevance; keep reranker's ordering.
+      ordered = scored
+        .filter((s) => s.index >= 0 && s.index < candidates.length)
+        .map((s) => ({ ...candidates[s.index], score: s.score }))
+      reranked = true
+    } catch (err) {
+      // A flaky reranker must never break the answer — degrade to vector order.
+      logger.warn("retrieval.rerank.fallback", {
+        requestId: options.requestId,
+        data: { error: (err as Error).message },
+      })
+      ordered = [...candidates].sort((a, b) => b.score - a.score)
+    }
   } else {
     ordered = [...candidates].sort((a, b) => b.score - a.score)
   }

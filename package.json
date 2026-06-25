@@ -16,7 +16,9 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "seed:sources": "tsx scripts/seed-sources.ts"
+    "seed:sources": "tsx scripts/seed-sources.ts",
+    "load:bible": "tsx scripts/load-bible.ts",
+    "bibles:public": "tsx scripts/load-public-bibles.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.5.9",

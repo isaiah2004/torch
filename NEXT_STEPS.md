@@ -128,10 +128,18 @@ answer ships unless every citation/quote/page is verified.
 - [ ] Set `ai_requests.verified` accordingly
 
 ### 3.4 Scripture — load your copy into Postgres
-- [ ] New table `bible_verses` (translation, book, chapter, verse, text) + migration
-- [ ] `scripts/load-bible.ts` importer for your file
-- [ ] Back `scripture_lookup` with it; render in "Biblical References"
-- [ ] **Needs from you:** the Scripture file + format + translation/license
+> **Infra ready (2026-06-26):** data layer built + validated against real data.
+> Source = `scrollmapper/bible_databases`. v1 public-domain set: **KJV, ASV, YLT,
+> BSB, Geneva 1599** (WEB absent from repo; BSB substituted). NIV/NKJV are
+> **quote-only** via api.bible (key obtained; needs per-translation Bible ids).
+- [x] New tables `bible_verses` + `bible_translations` (`canRedistribute`/license flag) + migration `0001_*`
+- [x] `pnpm bibles:public` — fetches + loads the 5 public-domain translations from scrollmapper (validated: 66 books, ~31,102 verses each for KJV/ASV/BSB/Geneva)
+- [x] `pnpm load:bible` — load a single translation from a local JSON file (tolerates scrollmapper array/nested/`books` shapes; `skipUnknownBooks` for apocrypha)
+- [x] Reference parser + canonical 66-book resolver (+ OSIS codes) + DB-backed `lookupPassage` (`lib/scripture/`, unit-tested)
+- [x] api.bible client for quote-only licensed translations: `quotePassage(code, ref)` via `API_BIBLE_KEY` + `API_BIBLE_IDS` (`toPassageId` unit-tested)
+- [ ] Run `pnpm bibles:public` against a live DB (needs DATABASE_URL) — code path validated, not yet executed
+- [ ] Provide api.bible Bible ids for NIV/NKJV in `API_BIBLE_IDS` (confirm they're licensed on api.bible)
+- [ ] Back the `scripture_lookup` **tool** with `lookupPassage`/`quotePassage` (Phase 3.1 graph) and render in "Biblical References"
 
 **✅ Phase 3 acceptance:** answers flow through the graph; the verifier provably
 rejects fabricated citations (regression suite green); Scripture references
