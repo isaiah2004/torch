@@ -8,12 +8,13 @@
 import OpenAI from "openai"
 
 import { serverEnv } from "@/lib/env"
+import { CohereReranker } from "./cohere-rerank"
 import {
   OpenAICompatibleChatModel,
   OpenAICompatibleEmbeddingModel,
   type AdapterConfig,
 } from "./openai-compatible"
-import type { AIProvider, ChatModel, EmbeddingModel } from "./types"
+import type { AIProvider, ChatModel, EmbeddingModel, Reranker } from "./types"
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
@@ -92,4 +93,14 @@ export function getEmbeddingModel(model?: string): EmbeddingModel {
   return makeProvider("openai").embeddings(model)
 }
 
-export type { AIProvider, ChatModel, EmbeddingModel } from "./types"
+/**
+ * The active hosted reranker, or `undefined` when none is configured (retrieval
+ * then falls back to vector-similarity order). Currently Cohere; swapping is a
+ * matter of adding another adapter here — no call-site changes.
+ */
+export function getReranker(model?: string): Reranker | undefined {
+  if (!serverEnv.COHERE_API_KEY) return undefined
+  return new CohereReranker(serverEnv.COHERE_API_KEY, model ?? serverEnv.AI_RERANK_MODEL)
+}
+
+export type { AIProvider, ChatModel, EmbeddingModel, Reranker } from "./types"

@@ -20,9 +20,11 @@ const serverSchema = z.object({
   AI_CHAT_MODEL: z.string().default("openai/gpt-4o-mini"),
   AI_EMBEDDING_MODEL: z.string().default("text-embedding-3-small"),
   AI_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(1536),
-  AI_RERANK_MODEL: z.string().optional(),
+  AI_RERANK_MODEL: z.string().default("rerank-v3.5"),
   OPENROUTER_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
+  // Hosted reranker (Cohere). When unset, retrieval falls back to vector-score order.
+  COHERE_API_KEY: z.string().optional(),
 
   // Ops
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),

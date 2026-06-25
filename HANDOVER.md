@@ -21,9 +21,25 @@ skeleton, zod validation, Vitest/Playwright setup.
 **Quality gate (all green):** `pnpm typecheck` · `pnpm lint` · `pnpm test` (7/7)
 · `pnpm build`.
 
-**Stubbed on purpose:** `/api/chat` streams an honest placeholder over the real
-protocol — retrieval/LLM are not wired yet. History/Library/Admin pages are
-shells. No ingestion, no LangGraph, no verifier yet.
+**Stubbed on purpose:** History/Library/Admin pages are shells. No LangGraph /
+verifier yet (Phase 3).
+
+**Phase 2 (RAG core) — code complete (branch `phase2-rag-core`):** ingestion
+pipeline (PDF/EPUB/MD/HTML/TXT loaders → clean → context-preserving chunker →
+batch embed → store with sha256 dedupe + `ingestion_jobs`), pgvector retrieval +
+**Cohere `rerank-v3.5`** rerank (vector-score fallback when no key), knowledge-base
+seed parser (`pnpm seed:sources`), admin ingest route + `ingest-cli`, and
+`/api/chat` now wired to real retrieval + grounded generation (honest "no reliable
+source" path; `ai_requests` recorded for non-private turns). 43 unit tests; gate
+green (`typecheck`/`lint`/`test`/`build`). Still needs live infra to run the
+end-to-end acceptance + integration tests (Postgres/pgvector + embedding key), and
+the admin/library UI hookups (Phase 4). See `NEXT_STEPS.md` for the ticked backlog.
+
+**Scripture + reranker decisions (from product):** Bible source =
+`scrollmapper/bible_databases` (Phase 3.4). Translations: ship public-domain
+**KJV, ASV, WEB, YLT, Geneva 1599**; **NIV & NKJV are copyrighted and NOT in that
+repo** — they need a licensed Bible API later. Reranker = Cohere `rerank-v3.5`
+(set `COHERE_API_KEY`; `AI_RERANK_MODEL` defaults to it).
 
 ---
 

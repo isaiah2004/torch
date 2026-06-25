@@ -14,74 +14,83 @@ you go so the branch reflects live state.
 **Outcome:** ingest a real book and get a streamed answer with genuine quotes +
 citations, wired straight into `/api/chat` (no graph yet).
 
+> **Status (2026-06-26):** core code complete and green (`pnpm typecheck`/`lint`/
+> `test` 43 passing/`build`). Remaining boxes need live infra (a Postgres with
+> pgvector + an embedding key) and the admin UI hookups — see the per-item notes.
+
 ### 2.0 Dependencies
-- [ ] PDF parser — `unpdf` (serverless-friendly) or `pdf-parse`
-- [ ] EPUB parser — e.g. `epub2` / `@gxl/epub-parser`
-- [ ] HTML → text — `node-html-parser` or `cheerio`
-- [ ] Text splitter — `@langchain/textsplitters` (or hand-rolled)
-- [ ] Token counter — `js-tiktoken`
-- [ ] (dev) ephemeral Postgres for integration tests — `@testcontainers/postgresql` or a docker-compose pg with pgvector
+- [x] PDF parser — `unpdf` (serverless-friendly)
+- [x] EPUB parser — `jszip` + `node-html-parser` (parse OPF spine + XHTML; avoids fragile epub libs)
+- [x] HTML → text — `node-html-parser`
+- [x] Text splitter — hand-rolled, token-aware (see `lib/ingestion/chunk.ts`)
+- [x] Token counter — `js-tiktoken` (`cl100k_base`, see `lib/ingestion/tokenize.ts`)
+- [ ] (dev) ephemeral Postgres for integration tests — `@testcontainers/postgresql` or docker pg+pgvector (not yet added; DB-touching code is unit-tested with injected fakes)
 
 ### 2.1 Loaders — `lib/ingestion/loaders/`
-- [ ] `pdf.ts` — text + per-page boundaries (capture page numbers)
-- [ ] `epub.ts` — chapters/sections + structure
-- [ ] `markdown.ts` — heading tree preserved
-- [ ] `html.ts` — strip nav/boilerplate, keep headings
-- [ ] `text.ts` — plain passthrough
-- [ ] Common return type `{ text, pages?, headings? }`; unit tests per loader on small fixtures
+- [x] `pdf.ts` — text + per-page boundaries (page spans → page numbers on chunks)
+- [x] `epub.ts` — spine order, cross-document heading offsets
+- [x] `markdown.ts` — ATX heading offsets (ignores fenced code)
+- [x] `html.ts` — strips nav/boilerplate, keeps heading offsets (shared `html-extract.ts`)
+- [x] `text.ts` — plain passthrough (line-ending normalize)
+- [x] Common return type `{ text, pages?, headings? }` + dispatcher (`detectFormat`/`loadDocument`); unit tests per loader (`tests/unit/ingestion-loaders.test.ts`)
 
 ### 2.2 Clean — `lib/ingestion/clean.ts`
-- [ ] Strip running headers/footers, page furniture
-- [ ] Normalize whitespace; de-hyphenate line-break splits
-- [ ] Preserve paragraph + heading boundaries
-- [ ] Unit tests on messy fixtures
+- [~] Strip running headers/footers, page furniture (standalone page-number lines + boilerplate tags done; cross-page running-header detection deferred)
+- [x] Normalize whitespace; de-hyphenate line-break splits
+- [x] Preserve paragraph + heading boundaries (clean runs per-chunk, after offsets are derived)
+- [x] Unit tests (`tests/unit/ingestion-chunk.test.ts`)
 
 ### 2.3 Chunk — `lib/ingestion/chunk.ts`
-- [ ] Heading/section-aware, token-windowed with overlap (preserve theological context — never arbitrary cuts)
-- [ ] Attach `ChunkMeta` (chapter, section, pageStart/End, headingPath) per chunk
-- [ ] Compute `tokenCount`
-- [ ] Unit tests: boundary correctness, overlap, metadata carry-through
+- [x] Heading/section-aware, token-windowed with overlap (paragraph-granular; never cuts across a heading)
+- [x] Attach `ChunkMeta` (chapter, section, pageStart/End, headingPath) per chunk
+- [x] Compute `tokenCount`
+- [x] Unit tests: boundary correctness, overlap, metadata carry-through
 
 ### 2.4 Embed — `lib/ingestion/embed.ts`
-- [ ] Batch embed via `getEmbeddingModel()` (respect batch limits + retries)
-- [ ] Assert vector length === `AI_EMBEDDING_DIMENSIONS`
-- [ ] Unit test with a mocked provider
+- [x] Batch embed via `getEmbeddingModel()` (batched; order preserved)
+- [x] Assert vector length === model `dimensions`
+- [x] Unit test with a mocked provider (`tests/unit/ingestion-pipeline.test.ts`)
 
 ### 2.5 Pipeline — `lib/ingestion/pipeline.ts`
-- [ ] Orchestrate parse → clean → chunk → embed → store
-- [ ] `sha256` dedupe against `documents.sha256`
-- [ ] Insert `documents` + `chunks`; update `documents.status` transitions
-- [ ] Create/track `ingestion_jobs` (chunks_total/done, model, timing, error)
-- [ ] Structured logs at every step (ingestion event family)
-- [ ] Integration test against ephemeral pg (ingest a fixture, assert rows + vectors)
+- [x] Orchestrate parse → clean → chunk → embed → store (`prepareDocument` pure core + `ingestDocument` persistence)
+- [x] `sha256` dedupe against `documents.sha256`
+- [x] Insert `documents` + `chunks`; update `documents.status` transitions
+- [x] Create/track `ingestion_jobs` (chunks_total/done, model, timing, error)
+- [x] Structured logs at every step (`ingestion.*` event family)
+- [ ] Integration test against ephemeral pg (deferred — `prepareDocument` unit-tested with a fake embedder; `ingestDocument` accepts an injected `db` for a future integration test)
 
 ### 2.6 Retrieval — `lib/retrieval/`
-- [ ] `search.ts` — embed query → pgvector cosine ANN via Drizzle (`embedding <=> $q`, `vector_cosine_ops`)
-- [ ] Metadata filters (tradition, sourceType, year range, source allow-list)
-- [ ] `rerank.ts` — hosted reranker through the provider layer (`Reranker`)
-- [ ] Return `{ selected, rejected }` (both logged for the inspector)
-- [ ] Avoid over-large context — top-K after rerank, drop low scores
-- [ ] Integration test: ranking order on a seeded corpus
+- [x] `search.ts` — embed query → pgvector cosine ANN via Drizzle (`cosineDistance`, HNSW order)
+- [x] Metadata filters (tradition, sourceType, year range, source allow-list)
+- [x] `rerank.ts` — hosted reranker through the provider layer (**Cohere `rerank-v3.5`**, `getReranker()`); LLM-free vector-score fallback when no key
+- [x] Return `{ selected, rejected }` (both logged for the inspector)
+- [x] Avoid over-large context — top-K candidates, top-N after rerank, drop below `minScore`
+- [ ] Integration test: ranking order on a seeded corpus (deferred — needs pg; rerank/selection logic unit-tested)
 
 ### 2.7 Seed sources — `scripts/seed-sources.ts`
-- [ ] Parse `protestant-theology-knowledge-base.md` → `sources` rows (title, author, tradition, type, url, year)
-- [ ] Idempotent upsert; `pnpm seed:sources`
-- [ ] Surface seeded sources in `/library`
+- [x] Parse `protestant-theology-knowledge-base.md` → `sources` rows (parser in `lib/ingestion/knowledge-base.ts`, unit-tested: 30 books + 30 sites)
+- [x] Idempotent upsert (skip by title); `pnpm seed:sources`
+- [ ] Surface seeded sources in `/library` (page still a shell — Phase 4 UX)
 
 ### 2.8 Ingest entry points
-- [ ] `app/api/ingest/route.ts` — admin-gated upload (multipart), enqueue pipeline, return job id
-- [ ] `scripts/ingest-cli.ts` — local batch ingest (`tsx`)
-- [ ] Admin "ingest" page hookup (upload + job status)
+- [x] `app/api/ingest/route.ts` — admin-gated multipart upload → pipeline → returns `{documentId, chunkCount, deduped}`
+- [x] `scripts/ingest-cli.ts` — local batch ingest (`tsx scripts/ingest-cli.ts <sourceId> <file…>`)
+- [ ] Admin "ingest" page hookup (upload + job status) — Phase 4 UX
 
 ### 2.9 Wire `/api/chat` to real retrieval
-- [ ] Retrieve evidence → build grounded prompt (system rules from ARCHITECTURE §8)
-- [ ] Stream answer tokens + real `citations` events (keep NDJSON contract)
-- [ ] Record `ai_requests` (non-private only); never persist private mode
-- [ ] Manual check: ask against an ingested book, verify quotes are real
+- [x] Retrieve evidence → grounded prompt (system rules from ARCHITECTURE §8, `lib/chat/grounded.ts`)
+- [x] Stream answer tokens + real `citations` events (NDJSON contract unchanged); honest "no reliable source" path when retrieval is empty
+- [x] Record `ai_requests` (non-private only, `lib/chat/record.ts`); private mode never persisted
+- [ ] Manual check: ask against an ingested book, verify quotes are real (needs live DB + keys)
 
 **✅ Phase 2 acceptance:** ingest a book → ask a question → streamed answer with
 verbatim quotes + author/work/page citations rendered in the existing chat UI;
 ingestion + retrieval covered by tests.
+
+**Where it stands:** all code paths implemented and unit-tested (43 tests, gate
+green). The end-to-end acceptance run + the two integration tests are blocked
+only on provisioning Postgres/pgvector + an embedding key; the code is structured
+to drop straight into them (injectable `db` + embedder).
 
 ---
 
