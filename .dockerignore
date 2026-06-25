@@ -1,0 +1,17 @@
+node_modules
+.next
+.git
+.github
+coverage
+playwright-report
+test-results
+*.log
+.env*
+!.env.example
+README.md
+HANDOVER.md
+NEXT_STEPS.md
+ARCHITECTURE.md
+tests
+.vscode
+.idea
