@@ -40,10 +40,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Migration tooling: drizzle-orm is zero-dependency, so copying the package in
-# full guarantees the migrator submodule is present (the traced standalone build
-# may omit it). `postgres` is already traced into the standalone node_modules.
+# DB packages: lib/db is only ever dynamically imported, so Next's standalone
+# tracing omits them. Both are zero-dependency, so copy them in full — needed by
+# the app at runtime AND by scripts/db-migrate.mjs (incl. drizzle's migrator).
 COPY --from=deps /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
+COPY --from=deps /app/node_modules/postgres ./node_modules/postgres
 COPY --from=builder --chown=nextjs:nodejs /app/lib/db/migrations ./lib/db/migrations
 COPY --chown=nextjs:nodejs scripts/db-migrate.mjs ./scripts/db-migrate.mjs
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
