@@ -43,7 +43,15 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   if (!isPublicRoute(req)) {
-    await auth.protect()
+    // API routes get a 401 JSON; page routes redirect to sign-in.
+    if (req.nextUrl.pathname.startsWith("/api")) {
+      const { userId } = await auth()
+      if (!userId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
+    } else {
+      await auth.protect()
+    }
   }
 })
 

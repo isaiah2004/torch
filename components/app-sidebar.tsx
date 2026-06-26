@@ -35,13 +35,17 @@ const navMain = [
 
 const navSecondary = [
   { title: "Settings", url: "/settings", icon: Settings2Icon },
-  { title: "Admin", url: "/admin", icon: ShieldIcon },
+  { title: "Admin", url: "/admin", icon: ShieldIcon, adminOnly: true },
 ]
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  isAdmin = false,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & { isAdmin?: boolean }) {
   const pathname = usePathname()
   const isActive = (url: string) =>
     pathname === url || pathname.startsWith(`${url}/`)
+  const secondary = navSecondary.filter((i) => !i.adminOnly || isAdmin)
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -98,7 +102,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <SidebarMenu>
-              {navSecondary.map((item) => (
+              {secondary.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild

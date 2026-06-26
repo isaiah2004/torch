@@ -1,7 +1,7 @@
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
-import { syncCurrentUser } from "@/lib/auth"
+import { isAdmin as checkIsAdmin, syncCurrentUser } from "@/lib/auth"
 
 // The app shell is authenticated and per-user; never statically prerender it.
 export const dynamic = "force-dynamic"
@@ -15,6 +15,7 @@ export default async function AppLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   // Best-effort: keep the local users row in sync with Clerk on navigation.
   await syncCurrentUser().catch(() => null)
+  const isAdmin = await checkIsAdmin().catch(() => false)
 
   return (
     <SidebarProvider
@@ -25,7 +26,7 @@ export default async function AppLayout({
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" />
+      <AppSidebar variant="inset" isAdmin={isAdmin} />
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col">{children}</div>
