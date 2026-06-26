@@ -10,6 +10,7 @@
 import { randomUUID } from "node:crypto"
 
 import { getUserId } from "@/lib/auth"
+import { condenseQuery } from "@/lib/chat/condense"
 import {
   buildGroundedMessages,
   citationsFromEvidence,
@@ -52,11 +53,11 @@ export async function POST(req: Request) {
     )
   }
 
-  const { question, isPrivate, filters, conversationId } = parsed.data
+  const { question, isPrivate, filters, conversationId, history } = parsed.data
   const requestId = randomUUID()
   const log = logger.child({ requestId, userId, private: isPrivate })
   log.info("chat.request.received", {
-    data: { length: question.length, isPrivate, filters },
+    data: { length: question.length, isPrivate, filters, historyTurns: history.length },
   })
 
   const stream = new ReadableStream<Uint8Array>({
@@ -66,9 +67,16 @@ export async function POST(req: Request) {
 
       try {
         send({ type: "status", node: "retrieval_planning", message: "Planning source retrieval" })
+
+        // For follow-ups, rewrite into a standalone query so retrieval stays on-topic.
+        const retrievalQuery = await condenseQuery(question, history, requestId)
+        if (retrievalQuery !== question) {
+          log.info("chat.query.condensed", { data: { retrievalQuery } })
+        }
+
         send({ type: "status", node: "source_retrieval", message: "Searching trusted sources" })
 
-        const { selected, candidates } = await retrieveEvidence(question, {
+        const { selected, candidates } = await retrieveEvidence(retrievalQuery, {
           filters,
           topK: RETRIEVAL_TOP_K,
           requestId,
@@ -101,7 +109,7 @@ export async function POST(req: Request) {
         }
 
         const provider = getProvider()
-        const messages = buildGroundedMessages(question, selected)
+        const messages = buildGroundedMessages(question, selected, history)
         let usagePrompt: number | undefined
         let usageCompletion: number | undefined
 

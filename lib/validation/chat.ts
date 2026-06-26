@@ -7,6 +7,17 @@ import { z } from "zod"
 export const askRequestSchema = z.object({
   question: z.string().min(1, "Question is required").max(4000),
   conversationId: z.string().uuid().optional(),
+  /** Recent conversation turns (most recent last) for context-aware answers. */
+  history: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().max(8000),
+      }),
+    )
+    .max(20)
+    .optional()
+    .default([]),
   /** Private mode: nothing about this turn is persisted. */
   isPrivate: z.boolean().default(false),
   /** Optional retrieval filters surfaced from the UI. */

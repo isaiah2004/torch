@@ -46,6 +46,12 @@ export function ChatPanel() {
     if (busy) return
     setBusy(true)
 
+    // Recent completed turns (exclude the new placeholder) for server context.
+    const history = messages
+      .filter((m) => m.content.trim().length > 0)
+      .slice(-8)
+      .map((m) => ({ role: m.role, content: m.content }))
+
     const userMsg: ChatMessage = { id: uid(), role: "user", content: text }
     const assistantId = uid()
     const assistantMsg: ChatMessage = {
@@ -64,7 +70,7 @@ export function ChatPanel() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: text, isPrivate }),
+        body: JSON.stringify({ question: text, isPrivate, history }),
       })
       if (!res.ok || !res.body) {
         throw new Error(`Request failed (${res.status})`)
