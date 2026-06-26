@@ -40,6 +40,20 @@ docker compose up --build
 
 ## Railway
 
+### Quickest path (CLI, scripted)
+A `torch` project already exists. From the repo root:
+```bash
+railway login                      # interactive — REQUIRED before any write op
+railway link                       # pick the `torch` project
+cp .env.example .env.local         # fill in keys
+bash scripts/railway-deploy.sh     # provisions Postgres + web + admin, deploys both
+```
+Then generate domains in the dashboard and load data (see the script's closing notes).
+For a public domain, use a **production Clerk instance** (dev instances add a
+device-trust step). The rest of this section is the equivalent manual setup.
+
+---
+
 Create one project with **three services**:
 
 1. **Postgres** — add the Railway Postgres plugin (its image supports
