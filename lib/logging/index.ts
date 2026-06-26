@@ -41,6 +41,14 @@ function enabled(level: LogLevel): boolean {
  * Persist a log row. Imported lazily so that the logger has no hard dependency
  * on the database (keeps it usable in tests and when DATABASE_URL is unset).
  */
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** The `logs` id columns are `uuid`; non-UUID ids (e.g. Clerk `user_…`) → null. */
+function uuidOrNull(value?: string): string | null {
+  return value && UUID_RE.test(value) ? value : null
+}
+
 async function persist(
   level: LogLevel,
   event: string,
@@ -50,15 +58,18 @@ async function persist(
   try {
     const { db } = await import("@/lib/db")
     const { logs } = await import("@/lib/db/schema")
+    // Preserve any non-UUID id (e.g. a Clerk user id) in `data` for traceability.
+    const nonUuid: Record<string, string> = {}
+    if (fields.userId && !UUID_RE.test(fields.userId)) nonUuid.clerkUserId = fields.userId
     await db.insert(logs).values({
       level,
       event,
-      requestId: fields.requestId ?? null,
-      userId: fields.userId ?? null,
-      conversationId: fields.conversationId ?? null,
-      documentId: fields.documentId ?? null,
+      requestId: uuidOrNull(fields.requestId),
+      userId: uuidOrNull(fields.userId),
+      conversationId: uuidOrNull(fields.conversationId),
+      documentId: uuidOrNull(fields.documentId),
       severity: fields.severity ?? 0,
-      data: fields.data ?? {},
+      data: { ...nonUuid, ...(fields.data ?? {}) },
     })
   } catch (err) {
     // Never let logging failures break a request.
