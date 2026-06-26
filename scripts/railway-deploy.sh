@@ -8,6 +8,9 @@
 #
 # Run from the repo root:  bash scripts/railway-deploy.sh
 set -euo pipefail
+# Stop Git-Bash/MSYS from rewriting values that start with "/" (e.g. /sign-in)
+# into Windows paths.
+export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
 
 ENVFILE=".env.local"
 [ -f "$ENVFILE" ] || { echo "Missing $ENVFILE"; exit 1; }
@@ -19,8 +22,10 @@ while IFS='=' read -r key val; do
     ''|\#*) continue ;;
     DATABASE_URL|APP_ROLE|RUN_MIGRATIONS) continue ;;  # set per-service below
   esac
-  # strip surrounding quotes / CR
-  val="${val%$'\r'}"; val="${val%\"}"; val="${val#\"}"; val="${val%\'}"; val="${val#\'}"
+  # strip CR, inline "# comment", trailing spaces, surrounding quotes.
+  val="${val%$'\r'}"
+  val="$(printf '%s' "$val" | sed -E 's/[[:space:]]+#.*$//; s/[[:space:]]+$//')"
+  val="${val%\"}"; val="${val#\"}"; val="${val%\'}"; val="${val#\'}"
   [ -n "$val" ] && VARS+=(--variables "$key=$val")
 done < "$ENVFILE"
 
