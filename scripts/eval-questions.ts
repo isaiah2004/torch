@@ -12,11 +12,16 @@ config({ path: ".env.local" })
 config()
 
 const QUESTIONS = [
+  // Doctrinal hard questions
   "If God is sovereign and good, why does he allow evil and suffering?",
   "Is salvation ultimately based on God's unconditional election or human free will? How do Reformed and Arminian Christians differ?",
-  "What happens to people who never hear about Jesus — can they be saved?",
-  "Is hell eternal conscious torment, and how can that be just?",
   "How can God be one God in three persons? Explain the Trinity from Scripture.",
+  // Ethical / skeptic hard questions (the kind people use to challenge the faith)
+  "Does Deuteronomy 22:28-29 force a rape victim to marry her rapist? Explain honestly.",
+  "Does the Bible endorse slavery? How should Christians understand the slavery passages?",
+  "Why does God command the killing of the Canaanites, including women and children? Is that genocide?",
+  "Does the Bible treat women as inferior or as property?",
+  "Is hell eternal conscious torment, and how can that be just?",
 ]
 
 async function main() {
