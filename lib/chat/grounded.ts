@@ -14,6 +14,7 @@
 import type { Citation, Confidence } from "@/lib/db/schema"
 import type { ChatMessage } from "@/lib/providers/types"
 import type { RetrievedChunk } from "@/lib/retrieval/types"
+import { playbookFor, type QuestionType } from "./playbooks"
 
 export const TORCH_SYSTEM_PROMPT = `You are Torch, a trustworthy study companion that helps believers wrestle with
 hard questions about God, the Bible, and the Christian faith — honestly,
@@ -85,10 +86,13 @@ export function buildGroundedMessages(
   question: string,
   selected: RetrievedChunk[],
   history: HistoryTurn[] = [],
+  type: QuestionType = "general",
 ): ChatMessage[] {
   const evidence = formatEvidence(selected)
   return [
     { role: "system", content: TORCH_SYSTEM_PROMPT },
+    // The playbook tailors the answer structure to this kind of question.
+    { role: "system", content: playbookFor(type) },
     // Prior turns give the model conversational context for follow-ups.
     ...history.map((h) => ({ role: h.role, content: h.content }) as ChatMessage),
     {

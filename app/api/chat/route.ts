@@ -10,7 +10,7 @@
 import { randomUUID } from "node:crypto"
 
 import { getUserId } from "@/lib/auth"
-import { condenseQuery } from "@/lib/chat/condense"
+import { analyzeQuestion } from "@/lib/chat/analyze"
 import {
   buildGroundedMessages,
   citationsFromEvidence,
@@ -66,14 +66,17 @@ export async function POST(req: Request) {
       const started = performance.now()
 
       try {
+        send({ type: "status", node: "intent_analysis", message: "Understanding the question" })
+
+        // Classify the question + rewrite follow-ups into a standalone retrieval query.
+        const { standaloneQuestion: retrievalQuery, type } = await analyzeQuestion(
+          question,
+          history,
+          requestId,
+        )
+        log.info("chat.query.analyzed", { data: { type, retrievalQuery } })
+
         send({ type: "status", node: "retrieval_planning", message: "Planning source retrieval" })
-
-        // For follow-ups, rewrite into a standalone query so retrieval stays on-topic.
-        const retrievalQuery = await condenseQuery(question, history, requestId)
-        if (retrievalQuery !== question) {
-          log.info("chat.query.condensed", { data: { retrievalQuery } })
-        }
-
         send({ type: "status", node: "source_retrieval", message: "Searching trusted sources" })
 
         const { selected, candidates } = await retrieveEvidence(retrievalQuery, {
@@ -109,7 +112,7 @@ export async function POST(req: Request) {
         }
 
         const provider = getProvider()
-        const messages = buildGroundedMessages(question, selected, history)
+        const messages = buildGroundedMessages(question, selected, history, type)
         let usagePrompt: number | undefined
         let usageCompletion: number | undefined
 

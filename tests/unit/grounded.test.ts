@@ -40,9 +40,16 @@ describe("grounded answer construction", () => {
   it("builds system + user messages embedding the question and evidence", () => {
     const msgs = buildGroundedMessages("How are we justified?", [chunk()])
     expect(msgs[0].role).toBe("system")
-    expect(msgs[1].role).toBe("user")
-    expect(msgs[1].content).toContain("How are we justified?")
-    expect(msgs[1].content).toContain("Institutes")
+    const user = msgs.find((m) => m.role === "user")
+    expect(user).toBeDefined()
+    expect(user!.content).toContain("How are we justified?")
+    expect(user!.content).toContain("Institutes")
+  })
+
+  it("includes a question-type playbook as a system message", () => {
+    const msgs = buildGroundedMessages("How do I grieve?", [chunk()], [], "consolation")
+    const systems = msgs.filter((m) => m.role === "system").map((m) => m.content)
+    expect(systems.some((c) => /ANSWER SHAPE \(grief/.test(c))).toBe(true)
   })
 
   it("citations reference the real chunk/source ids", () => {
