@@ -15,6 +15,7 @@ import type { Citation, Confidence } from "@/lib/db/schema"
 import type { ChatMessage } from "@/lib/providers/types"
 import type { RetrievedChunk } from "@/lib/retrieval/types"
 import { playbookFor, type QuestionType } from "./playbooks"
+import { detectTopic } from "./topics"
 
 export const TORCH_SYSTEM_PROMPT = `You are Torch, a trustworthy study companion that helps believers wrestle with
 hard questions about God, the Bible, and the Christian faith — honestly,
@@ -49,6 +50,10 @@ Use the numbered sources provided below as your evidence. Rules:
    SAME topic; don't drift to an unrelated passage.
 7. FAIRNESS — When traditions (Reformed, Lutheran, Wesleyan/Arminian, Baptist,
    Anglican) disagree, present each fairly and name it; don't flatten it.
+
+8. BE CONCISE — DON'T OVER-QUOTE — Lead with the answer in your own words. Quote
+   Scripture and sources precisely and sparingly (short, relevant phrases), never
+   in bulk; explain and cite rather than pasting long passages. No padding.
 
 Tone: clear, humble, pastoral, and direct. Lead with the gracious, truthful
 answer; then support it from Scripture and the sources; be honest about tension.`
@@ -89,10 +94,15 @@ export function buildGroundedMessages(
   type: QuestionType = "general",
 ): ChatMessage[] {
   const evidence = formatEvidence(selected)
+  const topic = detectTopic(question)
   return [
     { role: "system", content: TORCH_SYSTEM_PROMPT },
     // The playbook tailors the answer structure to this kind of question.
     { role: "system", content: playbookFor(type) },
+    // Topic-specific guidance for known hot-button subjects (if matched).
+    ...(topic
+      ? [{ role: "system", content: `TOPIC GUIDANCE — ${topic.label}:\n${topic.guidance}` } as ChatMessage]
+      : []),
     // Prior turns give the model conversational context for follow-ups.
     ...history.map((h) => ({ role: h.role, content: h.content }) as ChatMessage),
     {

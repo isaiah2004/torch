@@ -19,6 +19,14 @@ import {
 } from "@/lib/chat/grounded"
 import { encodeEvent, type ChatStreamEvent } from "@/lib/chat/protocol"
 import { recordAiRequest } from "@/lib/chat/record"
+import {
+  addMessage,
+  autoTitleFrom,
+  createConversation,
+  ensureLocalUserId,
+  getConversation,
+} from "@/lib/db/queries/conversations"
+import type { Citation, Confidence } from "@/lib/db/schema"
 import { serverEnv } from "@/lib/env"
 import { logger } from "@/lib/logging"
 import { getProvider } from "@/lib/providers"
@@ -65,6 +73,62 @@ export async function POST(req: Request) {
       const send = (event: ChatStreamEvent) => controller.enqueue(encodeEvent(event))
       const started = performance.now()
 
+      // ── Persistence (skipped entirely in private mode) ──────────────────────
+      // `echoConversationId` is what we return in the `done` event; `persistTo`
+      // is set only when we will actually write messages. Setup failures (or a
+      // missing local users row) degrade gracefully: streaming continues,
+      // nothing is persisted, and we echo back the incoming conversationId.
+      let echoConversationId: string | undefined = conversationId
+      let persistTo: string | undefined
+      if (!isPrivate && process.env.DATABASE_URL) {
+        try {
+          const localUserId = await ensureLocalUserId(userId)
+          if (localUserId) {
+            let cid = conversationId
+            // Only reuse a conversation the caller actually owns.
+            if (cid && !(await getConversation(cid, localUserId))) cid = undefined
+            if (!cid) {
+              cid = (
+                await createConversation({
+                  userId: localUserId,
+                  title: autoTitleFrom(question),
+                })
+              ).id
+            }
+            await addMessage({ conversationId: cid, role: "user", content: question })
+            persistTo = cid
+            echoConversationId = cid
+          }
+        } catch (err) {
+          log.error("chat.persist.setup_failed", {
+            data: { error: (err as Error).message },
+          })
+          persistTo = undefined
+        }
+      }
+
+      // Persist the assistant turn after generation; never break the stream.
+      const persistAssistant = async (
+        content: string,
+        citations: Citation[],
+        confidence: Confidence,
+      ) => {
+        if (!persistTo) return
+        try {
+          await addMessage({
+            conversationId: persistTo,
+            role: "assistant",
+            content,
+            citations,
+            confidence,
+          })
+        } catch (err) {
+          log.error("chat.persist.assistant_failed", {
+            data: { error: (err as Error).message },
+          })
+        }
+      }
+
       try {
         send({ type: "status", node: "intent_analysis", message: "Understanding the question" })
 
@@ -94,12 +158,18 @@ export async function POST(req: Request) {
             send({ type: "token", value: word + " " })
           }
           send({ type: "citations", citations: [] })
-          send({ type: "done", confidence: estimateConfidence([]), conversationId })
+          const noEvidenceConfidence = estimateConfidence([])
+          await persistAssistant(NO_EVIDENCE_ANSWER, [], noEvidenceConfidence)
+          send({
+            type: "done",
+            confidence: noEvidenceConfidence,
+            conversationId: echoConversationId,
+          })
           log.info("chat.request.no_evidence", { data: { candidates: candidates.length } })
           await recordAiRequest({
             requestId,
             userId,
-            conversationId,
+            conversationId: echoConversationId,
             question,
             provider: getProvider().name,
             model: serverEnv.AI_CHAT_MODEL,
@@ -115,24 +185,31 @@ export async function POST(req: Request) {
         const messages = buildGroundedMessages(question, selected, history, type)
         let usagePrompt: number | undefined
         let usageCompletion: number | undefined
+        let answer = ""
 
         for await (const chunk of provider.chat().stream({
           messages,
           temperature: 0.2,
           requestId,
         })) {
-          if (chunk.delta) send({ type: "token", value: chunk.delta })
+          if (chunk.delta) {
+            answer += chunk.delta
+            send({ type: "token", value: chunk.delta })
+          }
           if (chunk.usage) {
             usagePrompt = chunk.usage.prompt
             usageCompletion = chunk.usage.completion
           }
         }
 
-        send({ type: "citations", citations: citationsFromEvidence(selected) })
+        const citations = citationsFromEvidence(selected)
+        const confidence = estimateConfidence(selected)
+        await persistAssistant(answer, citations, confidence)
+        send({ type: "citations", citations })
         send({
           type: "done",
-          confidence: estimateConfidence(selected),
-          conversationId,
+          confidence,
+          conversationId: echoConversationId,
         })
         log.info("chat.request.completed", {
           data: { evidence: selected.length, latencyMs: Math.round(performance.now() - started) },
@@ -141,7 +218,7 @@ export async function POST(req: Request) {
         await recordAiRequest({
           requestId,
           userId,
-          conversationId,
+          conversationId: echoConversationId,
           question,
           provider: provider.name,
           model: serverEnv.AI_CHAT_MODEL,

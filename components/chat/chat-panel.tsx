@@ -27,10 +27,22 @@ function uid() {
   return Math.random().toString(36).slice(2)
 }
 
-export function ChatPanel() {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+export function ChatPanel({
+  initialMessages,
+  initialConversationId,
+}: {
+  initialMessages?: ChatMessage[]
+  initialConversationId?: string
+} = {}) {
+  const [messages, setMessages] = useState<ChatMessage[]>(
+    () => initialMessages ?? [],
+  )
   const [isPrivate, setIsPrivate] = useState(false)
   const [busy, setBusy] = useState(false)
+  // The persisted conversation this thread maps to (undefined until the first
+  // non-private turn is saved). A ref so the latest id is available inside the
+  // streaming closure and reused by follow-up turns without a re-render.
+  const conversationId = useRef<string | undefined>(initialConversationId)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   function scrollToBottom() {
@@ -70,7 +82,12 @@ export function ChatPanel() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: text, isPrivate, history }),
+        body: JSON.stringify({
+          question: text,
+          isPrivate,
+          history,
+          conversationId: conversationId.current,
+        }),
       })
       if (!res.ok || !res.body) {
         throw new Error(`Request failed (${res.status})`)
@@ -108,6 +125,14 @@ export function ChatPanel() {
                 statusLabel: undefined,
                 confidence: event.confidence,
               }))
+              // Adopt the persisted conversation id. For a brand-new thread,
+              // reflect it in the URL (no full navigation) so refresh/links work.
+              if (event.conversationId && !conversationId.current) {
+                conversationId.current = event.conversationId
+                window.history.replaceState(null, "", `/chat/${event.conversationId}`)
+              } else if (event.conversationId) {
+                conversationId.current = event.conversationId
+              }
               break
             case "error":
               patch((m) => ({
