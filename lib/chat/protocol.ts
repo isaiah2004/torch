@@ -7,11 +7,19 @@
  */
 import type { Citation, Confidence } from "@/lib/db/schema"
 
+/** A scripture reference resolved to its verse text, for the references panel. */
+export interface ResolvedReference {
+  reference: string
+  translation: string
+  text: string
+}
+
 export type ChatStreamEvent =
   | { type: "token"; value: string }
   | { type: "status"; node: string; message?: string }
   | { type: "citations"; citations: Citation[] }
-  | { type: "done"; confidence?: Confidence; conversationId?: string }
+  | { type: "references"; references: ResolvedReference[] }
+  | { type: "done"; confidence?: Confidence; conversationId?: string; verified?: boolean }
   | { type: "error"; message: string }
 
 export function encodeEvent(event: ChatStreamEvent): Uint8Array {

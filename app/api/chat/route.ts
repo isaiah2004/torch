@@ -19,6 +19,7 @@ import {
 } from "@/lib/chat/grounded"
 import { encodeEvent, type ChatStreamEvent } from "@/lib/chat/protocol"
 import { recordAiRequest } from "@/lib/chat/record"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import {
   addMessage,
   autoTitleFrom,
@@ -31,7 +32,12 @@ import { serverEnv } from "@/lib/env"
 import { logger } from "@/lib/logging"
 import { getProvider } from "@/lib/providers"
 import { retrieveEvidence } from "@/lib/retrieval"
+import {
+  extractScriptureReferences,
+  resolveScriptureReferences,
+} from "@/lib/scripture/references"
 import { askRequestSchema } from "@/lib/validation/chat"
+import { verifyAnswer } from "@/lib/verification/verify"
 
 // proxy/auth runs on nodejs; retrieval + provider need Node APIs too.
 export const runtime = "nodejs"
@@ -45,6 +51,9 @@ export async function POST(req: Request) {
   if (!userId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 })
   }
+
+  const rl = checkRateLimit(`chat:${userId}`, serverEnv.RATE_LIMIT_CHAT_PER_MIN)
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSec)
 
   let body: unknown
   try {
@@ -206,10 +215,31 @@ export async function POST(req: Request) {
         const confidence = estimateConfidence(selected)
         await persistAssistant(answer, citations, confidence)
         send({ type: "citations", citations })
+
+        // ── Trust layer: verify every quote/citation against the evidence ──────
+        send({ type: "status", node: "citation_verification", message: "Verifying citations" })
+        const verification = verifyAnswer(answer, selected)
+        log.info("chat.verification", {
+          data: {
+            verified: verification.verified,
+            quotesChecked: verification.quotesChecked,
+            unsupportedQuotes: verification.unsupportedQuotes.length,
+            citationIssues: verification.citationIssues.length,
+          },
+        })
+
+        // ── Biblical references: derived from the answer, never persisted ─────
+        // Emitted for both private and non-private turns (only DB writes are gated).
+        const references = await resolveScriptureReferences(
+          extractScriptureReferences(answer),
+        )
+        if (references.length > 0) send({ type: "references", references })
+
         send({
           type: "done",
           confidence,
           conversationId: echoConversationId,
+          verified: verification.verified,
         })
         log.info("chat.request.completed", {
           data: { evidence: selected.length, latencyMs: Math.round(performance.now() - started) },
@@ -226,7 +256,7 @@ export async function POST(req: Request) {
           tokensPrompt: usagePrompt,
           tokensCompletion: usageCompletion,
           retrievalCount: selected.length,
-          verified: false,
+          verified: verification.verified,
           isPrivate,
         })
       } catch (err) {

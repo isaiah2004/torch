@@ -1,9 +1,42 @@
-import { FlameIcon } from "lucide-react"
+import { BookOpenIcon, FlameIcon, ShieldCheckIcon } from "lucide-react"
 
+import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { ConfidenceBadge } from "./confidence-badge"
 import { SourcePanel } from "./source-panel"
 import type { ChatMessage } from "./types"
+
+/** Resolved scripture references for an answer (the verse text behind each ref). */
+function BiblicalReferences({
+  references,
+}: {
+  references: NonNullable<ChatMessage["references"]>
+}) {
+  if (references.length === 0) return null
+
+  return (
+    <div className="mt-3 flex flex-col gap-2">
+      <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        Biblical references ({references.length})
+      </h4>
+      {references.map((r, i) => (
+        <Card key={`${r.reference}-${i}`} className="border-l-2 border-l-primary/50">
+          <CardContent className="flex flex-col gap-1.5 p-3">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <BookOpenIcon className="size-3.5 shrink-0" />
+              <span className="truncate">
+                {r.reference} ({r.translation})
+              </span>
+            </div>
+            <blockquote className="text-sm leading-relaxed italic">
+              {r.text}
+            </blockquote>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
 
 export function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user"
@@ -33,10 +66,23 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
 
         {message.citations && <SourcePanel citations={message.citations} />}
 
+        {message.references && message.references.length > 0 && (
+          <BiblicalReferences references={message.references} />
+        )}
+
         {(message.confidence || message.statusNode) && (
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {message.confidence && (
               <ConfidenceBadge confidence={message.confidence} />
+            )}
+            {message.verified && (
+              <span
+                className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400"
+                title="Every quote and citation was checked against the cited sources."
+              >
+                <ShieldCheckIcon className="size-3.5" />
+                Verified
+              </span>
             )}
             {message.streaming && message.statusLabel && (
               <span

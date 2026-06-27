@@ -8,8 +8,10 @@
 import { randomUUID } from "node:crypto"
 
 import { ForbiddenError, requireAdmin, UnauthorizedError } from "@/lib/auth"
+import { serverEnv } from "@/lib/env"
 import { logger } from "@/lib/logging"
 import { ingestDocument } from "@/lib/ingestion/pipeline"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { ingestRequestSchema } from "@/lib/validation/ingest"
 
 export const runtime = "nodejs"
@@ -27,6 +29,9 @@ export async function POST(req: Request) {
       return Response.json({ error: "Forbidden" }, { status: 403 })
     throw err
   }
+
+  const rl = checkRateLimit(`ingest:${userId}`, serverEnv.RATE_LIMIT_CHAT_PER_MIN)
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSec)
 
   let form: FormData
   try {

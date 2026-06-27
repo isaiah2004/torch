@@ -118,12 +118,16 @@ export function ChatPanel({
             case "citations":
               patch((m) => ({ ...m, citations: event.citations }))
               break
+            case "references":
+              patch((m) => ({ ...m, references: event.references }))
+              break
             case "done":
               patch((m) => ({
                 ...m,
                 streaming: false,
                 statusLabel: undefined,
                 confidence: event.confidence,
+                verified: event.verified,
               }))
               // Adopt the persisted conversation id. For a brand-new thread,
               // reflect it in the URL (no full navigation) so refresh/links work.
